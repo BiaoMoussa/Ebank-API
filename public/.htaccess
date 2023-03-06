@@ -1,0 +1,4 @@
+RewriteEngine On
+
+RewriteRule ^eBank/public/$ eBank/public/index.php
+RewriteRule .* - [env=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
