@@ -5,6 +5,7 @@
         "nyholm/psr7": "^1.5",
         "nyholm/psr7-server": "^1.0",
         "guzzlehttp/psr7": "^2",
-        "vlucas/phpdotenv": "^5.5"
+        "vlucas/phpdotenv": "^5.5",
+        "tuupola/slim-jwt-auth": "^3.7"
     }
 }

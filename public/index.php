@@ -6,9 +6,12 @@ use Slim\Factory\AppFactory;
 
 require __DIR__ . '/../vendor/autoload.php';
 require __DIR__ . '/../src/utils/connection.php';
-require __DIR__ . '/../src/utils/feth_data.php';
+require __DIR__ . '/../src/utils/fetch_data.php';
 require __DIR__ . '/../src/repositories/client_repositorie.php';
 require __DIR__ . '/../src/repositories/compte_repositorie.php';
+require __DIR__ . '/../src/repositories/operation_repositorie.php';
+require __DIR__ . '/../src/repositories/virement_repositorie.php';
+
 $app = AppFactory::create();
 
 $url_de_base = '';
@@ -20,21 +23,91 @@ $app->setBasePath($url_de_base); //Chemin de base de l'API
 $app->addErrorMiddleware(true, true, true);
 
 
+/**
+ * AUTHENTIFICATION
+ */
+
+/**
+ * Le middleware d'authentifcation JWT
+ */
+$app->add(new \Tuupola\Middleware\JwtAuthentication([
+    "secure" => false,
+    "path" => ["$url_de_base/"],
+    "ignore" => ["$url_de_base/token"],
+    "secret" => $_SERVER['SECRET_KEY'],
+    "algorithm" => ["HS256"],
+    "error" => function ($response, $arguments) {
+        $data["status"] = "error";
+        $data["message"] = $arguments["message"];
+
+        $response->getBody()->write(
+            json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT)
+        );
+
+        return $response->withHeader("Content-Type", "application/json")->withStatus(401);
+    },
+
+]));
+/**
+ * Web service d'authentification, il n'est pas sécurisé.
+ * Néanmoins il faut lui passer un login et password valide pour obtenir un
+ * token.
+ */
+$app->post('/token', function ($request, $response, $args) {
+
+    $requested_scopes = $request->getParsedBody();
+
+    $client_id = $requested_scopes['client_id']??null;
+    $client_secret = $requested_scopes["client_secret"]??"";
+    if ($client_id == $_SERVER["CLIENT_ID"] and $client_secret == $_SERVER["CLIENT_SECRET"]) { // A vérirfier dans la base de données
+        $now = new DateTime();
+        $future = new DateTime("+5 minutes");
+        //$jti = Base62::encode(random_bytes(16));
+        $server = $request->getServerParams();
+        $payload = [
+            "iat" => $now->getTimeStamp(),
+            "exp" => $future->getTimeStamp(),
+            "data" => $requested_scopes
+        ];
+        $secret = $_SERVER["SECRET_KEY"];
+        $token = \Firebase\JWT\JWT::encode($payload, $secret, "HS256");
+        $data["status"] = "success";
+        $data["access_token"] = $token;
+        $data["expires"]= $future->getTimestamp() - $now->getTimestamp();
+
+        $response->getBody()->write(
+            json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT)
+        );
+
+        return $response->withHeader("Content-Type", "application/json");
+    }else{
+        $data["status"] = "error";
+        $data["message"] = "client_id ou client_secret incorrect";
+
+        $response->getBody()->write(
+            json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT)
+        );
+
+        return $response->withHeader("Content-Type", "application/json")->withStatus(401);
+    }
+});
+
+
+/**
+ * WEB SERVICES RELATIFS AUX CLIENTS
+ */
 $app->get('/clients', function (Request $request, Response $response, $args) {
     $data = array("status" => "success",
         "data" => (array)find_clients());
     return fetch_data($request, $response, $args, $data);
 });
 
-/**
- * WEB SERVICES RELATIFS AUX CLIENTS
- */
 
 $app->get('/client-id={id}', function (Request $request, Response $response, $args) {
     if (client_exists($args["id"])) {
         $data = array("status" => "success",
             "data" => (array)find_client($args["id"]));
-    }else{
+    } else {
         $data = array("status" => "success",
             "msg" => "Client Not Found");
     }
@@ -52,7 +125,7 @@ $app->post('/client-create', function (Request $request, Response $response, $ar
     return fetch_data($request, $response, $args, $data);
 });
 
-$app->post('/client-update-{id}', function (Request $request, Response $response, $args) {
+$app->post('/client-update-id={id}', function (Request $request, Response $response, $args) {
     $is_updated = update_client($args["id"], $request->getParsedBody());
     if (is_bool($is_updated) and $is_updated) {
         $data = array("status" => "success", "msg" => "Client Updated Successfully");
@@ -78,7 +151,7 @@ $app->get('/comptes-courant', function (Request $request, Response $response, $a
 
 $app->get('/compte-courant-numero={numero}', function (Request $request, Response $response, $args) {
     $data = array("status" => "success",
-        "data" => (array)find_comptes(1,$args["numero"]));
+        "data" => (array)find_comptes(1, $args["numero"]));
     return fetch_data($request, $response, $args, $data);
 });
 
@@ -90,12 +163,12 @@ $app->get('/comptes-epargne', function (Request $request, Response $response, $a
 
 $app->get('/compte-epargne-numero={numero}', function (Request $request, Response $response, $args) {
     $data = array("status" => "success",
-        "data" => (array)find_comptes(2,$args["numero"]));
+        "data" => (array)find_comptes(2, $args["numero"]));
     return fetch_data($request, $response, $args, $data);
 });
 
 $app->post('/compte-courant-create', function (Request $request, Response $response, $args) {
-    $is_created = create_compte(1,$request->getParsedBody());
+    $is_created = create_compte(1, $request->getParsedBody());
     if (is_bool($is_created) && $is_created) {
         $data = array("status" => "success", "msg" => "Account Created Successfully");
     } else {
@@ -105,7 +178,7 @@ $app->post('/compte-courant-create', function (Request $request, Response $respo
 });
 
 $app->post('/compte-epargne-create', function (Request $request, Response $response, $args) {
-    $is_created = create_compte(2,$request->getParsedBody());
+    $is_created = create_compte(2, $request->getParsedBody());
     if (is_bool($is_created) && $is_created) {
         $data = array("status" => "success", "msg" => "Account Created Successfully");
     } else {
@@ -114,4 +187,77 @@ $app->post('/compte-epargne-create', function (Request $request, Response $respo
     return fetch_data($request, $response, $args, $data);
 });
 
+
+/**
+ * WEB SERVICES RELATIFS AUX OPERATIONS
+ */
+
+$app->get('/retraits', function (Request $request, Response $response, $args) {
+    $data = array("status" => "success",
+        "data" => find_operations(1));
+    return fetch_data($request, $response, $args, $data);
+});
+
+$app->get('/versements', function (Request $request, Response $response, $args) {
+    $data = array("status" => "success",
+        "data" => find_operations(2));
+    return fetch_data($request, $response, $args, $data);
+});
+
+$app->get('/retrait-code={code}', function (Request $request, Response $response, $args) {
+    $data = array("status" => "success",
+        "data" => find_operation_by_code(1, $args["code"]));
+    return fetch_data($request, $response, $args, $data);
+});
+
+$app->get('/versement-code={code}', function (Request $request, Response $response, $args) {
+    $data = array("status" => "success",
+        "data" => find_operation_by_code(2, $args["code"]));
+    return fetch_data($request, $response, $args, $data);
+});
+
+
+$app->post('/retrait-create', function (Request $request, Response $response, $args) {
+    $is_created = create_operation(1/** retrait*/, $request->getParsedBody());
+    if (is_bool($is_created) && $is_created) {
+        $data = array("status" => "success", "msg" => "Account Created Successfully");
+    } else {
+        $data = array("status" => "error", "msg" => "$is_created");
+    }
+    return fetch_data($request, $response, $args, $data);
+});
+
+$app->post('/versement-create', function (Request $request, Response $response, $args) {
+    $is_created = create_operation(2/** depôt **/, $request->getParsedBody());
+    if (is_bool($is_created) && $is_created) {
+        $data = array("status" => "success", "msg" => "Account Created Successfully");
+    } else {
+        $data = array("status" => "error", "msg" => "$is_created");
+    }
+    return fetch_data($request, $response, $args, $data);
+});
+
+
+$app->post('/virement-create', function (Request $request, Response $response, $args) {
+    $is_created = create_virement($request->getParsedBody());
+    if (is_bool($is_created) && $is_created) {
+        $data = array("status" => "success", "msg" => "Account Created Successfully");
+    } else {
+        $data = array("status" => "error", "msg" => "$is_created");
+    }
+    return fetch_data($request, $response, $args, $data);
+});
+
+
+$app->get('/virements', function (Request $request, Response $response, $args) {
+    $data = array("status" => "success",
+        "data" => find_virements());
+    return fetch_data($request, $response, $args, $data);
+});
+
+$app->get('/virement-code={code}', function (Request $request, Response $response, $args) {
+    $data = array("status" => "success",
+        "data" => find_virement_by_code($args["code"]));
+    return fetch_data($request, $response, $args, $data);
+});
 $app->run();

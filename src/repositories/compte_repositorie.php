@@ -51,11 +51,11 @@ function find_comptes($type,$numero="",$client=0)
 {
     $db = $GLOBALS['db'];
     if ($type == 1)
-        $QUERY = "SELECT DISTINCT c.numero,t.libelle as type,c.solde,c.decouvert,c.id_client FROM comptes c,type_compte t WHERE c.id_type_compte=t.id AND t.id = $type";
+        $QUERY = "SELECT DISTINCT c.id, c.numero,t.libelle as type,c.solde,c.decouvert,c.id_client FROM comptes c,type_compte t WHERE c.id_type_compte=t.id AND t.id = $type";
     elseif ($type == 2)
-        $QUERY = "SELECT DISTINCT c.numero,t.libelle as type,c.solde,c.taux ,c.id_client FROM comptes c,type_compte t WHERE c.id_type_compte=t.id AND t.id = $type";
+        $QUERY = "SELECT DISTINCT c.id, c.numero,t.libelle as type,c.solde,c.taux ,c.id_client FROM comptes c,type_compte t WHERE c.id_type_compte=t.id AND t.id = $type";
     elseif ($type == 0)
-        $QUERY = "SELECT DISTINCT c.numero,t.libelle as type,c.solde,c.taux ,c.id_client FROM comptes c,type_compte t WHERE c.id_type_compte=t.id";
+        $QUERY = "SELECT DISTINCT c.id, c.numero,t.libelle as type,c.solde,c.taux ,c.id_client FROM comptes c,type_compte t WHERE c.id_type_compte=t.id";
     if(!empty($numero)){
         $QUERY .= " AND c.numero = '$numero'";
     }
@@ -67,15 +67,26 @@ function find_comptes($type,$numero="",$client=0)
     $comptes = (array)$records;
     $clients = (array)find_clients();
     $data = array();
+    $opers = array(); //variable temporaire
     foreach ($comptes as $compte) {
         foreach ($clients as $client) {
             $compte = (array)$compte;
             $client = (array)$client;
             if ($compte['id_client'] == $client['id']) {
+                $operations = (array)simple_select_operation_by_id_compte($compte['id']);
+                unset($compte["id"]);
+                foreach ($operations as $operation) {
+                    $temp = (array)$operation;
+                    unset($temp["id_compte"]);
+                    $temp["type"]=($temp["id_type_operation"]==1) ?'retrait':'versement';
+                    unset($temp["id_type_operation"]);
+                    array_push($opers,$temp);
+                }
                 unset($client["comptes"]);
                 $record = $compte;
                 unset($record['id_client']);
                 $record["client"] = (array)$client;
+                $record["operations"] = $opers;
                 array_push($data, $record);
             }
         }
@@ -86,6 +97,25 @@ function find_comptes($type,$numero="",$client=0)
 function find_compte($numero)
 {
     $db = $GLOBALS['db'];
+    $QUERY = "SELECT * FROM comptes WHERE numero = '$numero'";
+    $records = $db->query($QUERY)->fetchAll(PDO::FETCH_OBJ);
+    if (sizeof((array)$records) > 0) {
+        return $records[0];
+    } else {
+        return "Account Not Found";
+    }
+}
+
+function find_compte_by_id($id)
+{
+    $db = $GLOBALS['db'];
+    $QUERY = "SELECT * FROM comptes WHERE id = '$id'";
+    $records = $db->query($QUERY)->fetchAll(PDO::FETCH_OBJ);
+    if (sizeof((array)$records) > 0) {
+        return $records[0];
+    } else {
+        return "Account Not Found";
+    }
 }
 function type_compte_exists($type)
 {
@@ -99,6 +129,26 @@ function type_compte_exists($type)
     }
 }
 
+function update_compte($numero,$data){
+    $compte = (array)find_compte($numero);
+    $solde  = ($data["solde"])??$compte["solde"];
+    $taux   = ($data["taux"])??$compte["taux"];
+    $decouvert = ($data["decouvert"])??$compte["decouvert"];
+    try {
+        $db = $GLOBALS['db'];
+        $QUERY = "UPDATE comptes SET solde = :solde,taux = :taux,decouvert= :decouvert,numero= :numero WHERE id=:id";
+        $preparedStatement = $db->prepare($QUERY);
+        $preparedStatement->bindParam(':solde', $solde);
+        $preparedStatement->bindParam(':taux', $taux);
+        $preparedStatement->bindParam(':decouvert', $decouvert);
+        $preparedStatement->bindParam(':numero', $data["numero"]);
+        $preparedStatement->bindParam(':id',$data["id"]);
+        $preparedStatement->execute();
+        return true;
+    } catch (Exception $ex) {
+        return $ex->getMessage();
+    }
+}
 function get_last_created_compte()
 {
     $db = $GLOBALS['db'];

@@ -28,6 +28,15 @@
             'reference' => '9d94dc0154230ac39e5bf89398b324a86f63f765',
             'dev_requirement' => false,
         ),
+        'firebase/php-jwt' => array(
+            'pretty_version' => 'v5.5.1',
+            'version' => '5.5.1.0',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../firebase/php-jwt',
+            'aliases' => array(),
+            'reference' => '83b609028194aa042ea33b5af2d41a7427de80e6',
+            'dev_requirement' => false,
+        ),
         'graham-campbell/result-type' => array(
             'pretty_version' => 'v1.1.1',
             'version' => '1.1.1.0',
@@ -113,6 +122,7 @@
             'dev_requirement' => false,
             'provided' => array(
                 0 => '1.0',
+                1 => '^1.0',
             ),
         ),
         'psr/http-message' => array(
@@ -209,6 +219,33 @@
             'install_path' => __DIR__ . '/../symfony/polyfill-php80',
             'aliases' => array(),
             'reference' => '7a6ff3f1959bb01aefccb463a0f2cd3d3d2fd936',
+            'dev_requirement' => false,
+        ),
+        'tuupola/callable-handler' => array(
+            'pretty_version' => '1.1.0',
+            'version' => '1.1.0.0',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../tuupola/callable-handler',
+            'aliases' => array(),
+            'reference' => '0bc7b88630ca753de9aba8f411046856f5ca6f8c',
+            'dev_requirement' => false,
+        ),
+        'tuupola/http-factory' => array(
+            'pretty_version' => '1.4.0',
+            'version' => '1.4.0.0',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../tuupola/http-factory',
+            'aliases' => array(),
+            'reference' => 'ae3f8fbdd31cf2f1bbe920b38963c5e4d1e9c454',
+            'dev_requirement' => false,
+        ),
+        'tuupola/slim-jwt-auth' => array(
+            'pretty_version' => '3.7.0',
+            'version' => '3.7.0.0',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../tuupola/slim-jwt-auth',
+            'aliases' => array(),
+            'reference' => 'ef05b93d4dac7307ef6ef3b62feaff30c32e82c1',
             'dev_requirement' => false,
         ),
         'vlucas/phpdotenv' => array(
