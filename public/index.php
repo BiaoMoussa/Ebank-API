@@ -22,13 +22,14 @@ $app->setBasePath($url_de_base); //Chemin de base de l'API
 
 $app->addErrorMiddleware(true, true, true);
 
+$app->addBodyParsingMiddleware();
 
 /**
  * AUTHENTIFICATION
  */
 
 /**
- * Le middleware d'authentifcation JWT
+ * Le middleware d'authentification JWT
  */
 $app->add(new \Tuupola\Middleware\JwtAuthentication([
     "secure" => false,
@@ -50,7 +51,7 @@ $app->add(new \Tuupola\Middleware\JwtAuthentication([
 ]));
 /**
  * Web service d'authentification, il n'est pas sécurisé.
- * Néanmoins il faut lui passer un login et password valide pour obtenir un
+ * Néanmoins il faut lui passer un client_id et un client_secret valide pour obtenir un
  * token.
  */
 $app->post('/token', function ($request, $response, $args) {
@@ -61,9 +62,8 @@ $app->post('/token', function ($request, $response, $args) {
     $client_secret = $requested_scopes["client_secret"]??"";
     if ($client_id == $_SERVER["CLIENT_ID"] and $client_secret == $_SERVER["CLIENT_SECRET"]) { // A vérirfier dans la base de données
         $now = new DateTime();
-        $future = new DateTime("+5 minutes");
-        //$jti = Base62::encode(random_bytes(16));
-        $server = $request->getServerParams();
+        $expire_token = $_SERVER["EXPIRE_TOKEN"];
+        $future = new DateTime("+$expire_token minutes");
         $payload = [
             "iat" => $now->getTimeStamp(),
             "exp" => $future->getTimeStamp(),
@@ -88,7 +88,7 @@ $app->post('/token', function ($request, $response, $args) {
             json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT)
         );
 
-        return $response->withHeader("Content-Type", "application/json")->withStatus(401);
+        return $response->withHeader("Content-Type", "application/json")->withStatus(\Grpc\STATUS_NOT_FOUND);
     }
 });
 
@@ -177,6 +177,16 @@ $app->post('/compte-courant-create', function (Request $request, Response $respo
     return fetch_data($request, $response, $args, $data);
 });
 
+$app->post('/compte-set-status', function (Request $request, Response $response, $args) {
+    $is_updated = update_compte($request->getParsedBody());
+    if (is_bool($is_updated) && $is_updated) {
+        $data = array("status" => "success", "msg" => "Status updated Successfully");
+    } else {
+        $data = array("status" => "error", "msg" => "$is_updated");
+    }
+    return fetch_data($request, $response, $args, $data);
+});
+
 $app->post('/compte-epargne-create', function (Request $request, Response $response, $args) {
     $is_created = create_compte(2, $request->getParsedBody());
     if (is_bool($is_created) && $is_created) {
@@ -220,7 +230,7 @@ $app->get('/versement-code={code}', function (Request $request, Response $respon
 $app->post('/retrait-create', function (Request $request, Response $response, $args) {
     $is_created = create_operation(1/** retrait*/, $request->getParsedBody());
     if (is_bool($is_created) && $is_created) {
-        $data = array("status" => "success", "msg" => "Account Created Successfully");
+        $data = array("status" => "success", "msg" => "Withdraw Done Successfully");
     } else {
         $data = array("status" => "error", "msg" => "$is_created");
     }
@@ -230,7 +240,7 @@ $app->post('/retrait-create', function (Request $request, Response $response, $a
 $app->post('/versement-create', function (Request $request, Response $response, $args) {
     $is_created = create_operation(2/** depôt **/, $request->getParsedBody());
     if (is_bool($is_created) && $is_created) {
-        $data = array("status" => "success", "msg" => "Account Created Successfully");
+        $data = array("status" => "success", "msg" => "Deposit done Successfully");
     } else {
         $data = array("status" => "error", "msg" => "$is_created");
     }

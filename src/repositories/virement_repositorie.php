@@ -34,7 +34,7 @@ function create_virement($data)
             return true;
         } catch (Exception $e) {
             $db->rollBack();
-            return "error => " . $e->getMessage() . ", data =>" . $compte_arrivee["id"];
+            return $e->getMessage();
         }
     } else {
         return $data;

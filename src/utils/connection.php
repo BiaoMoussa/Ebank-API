@@ -6,7 +6,7 @@ $envFile = $racine . '.env';
 if (file_exists($envFile)) {
     $dotenv->load();
 }
-$dotenv->required(['DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASS', 'DB_PORT','SECRET_KEY','CLIENT_ID','CLIENT_SECRET']);
+$dotenv->required(['DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASS', 'DB_PORT','SECRET_KEY','CLIENT_ID','CLIENT_SECRET','EXPIRE_TOKEN']);
 
 $host = $_SERVER["DB_HOST"];
 $db_name = $_SERVER["DB_NAME"];
