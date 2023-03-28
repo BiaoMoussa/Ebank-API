@@ -8,19 +8,25 @@
 function create_client($data)
 {
     $nom = $data["nom"];
+    if(empty($nom)) return "Le nom est requis !";
     $prenom = $data["prenom"];
+    if(empty($prenom)) return "Le prénom est requis !";
     $email = $data["email"];
+    if(empty($email)) return "Le email est requis !";
+    if(empty($data["password"])) return "Password est requis";
+    $password = sha1($data["password"]);
     $email_exists = email_already_exists($email);
     if ($email_exists) {
-        return false;
+        return "email already exists!";
     }
     try {
         $db = $GLOBALS['db'];
-        $QUERY = "INSERT INTO client (nom,prenom,email) VALUES (:nom,:prenom,:email)";
+        $QUERY = "INSERT INTO client (nom,prenom,email,password) VALUES (:nom,:prenom,:email,:password)";
         $preparedStatement = $db->prepare($QUERY);
         $preparedStatement->bindParam(':nom', $nom);
         $preparedStatement->bindParam(':prenom', $prenom);
         $preparedStatement->bindParam(':email', $email);
+        $preparedStatement->bindParam(':password', $password);
         $preparedStatement->execute();
         return true;
     } catch (Exception $ex) {
@@ -36,7 +42,7 @@ function create_client($data)
 function find_clients()
 {
     $db = $GLOBALS['db'];
-    $QUERY = "SELECT * FROM client";
+    $QUERY = "SELECT id, nom, prenom, email FROM client";
     $records = $db->query($QUERY)->fetchAll(PDO::FETCH_OBJ);
     $clients = array();
     foreach ($records as $client){
@@ -55,7 +61,7 @@ function find_clients()
 function find_client($id)
 {
     $db = $GLOBALS['db'];
-    $QUERY = "SELECT * FROM client WHERE id=$id";
+    $QUERY = "SELECT id,nom,prenom,email FROM client WHERE id=$id";
     $records = $db->query($QUERY)->fetchAll(PDO::FETCH_OBJ);
     $client = (array)$records[0];
     $client['comptes'] = comptes_of_client($id);
@@ -84,10 +90,11 @@ function email_already_exists($email)
  * @param $data
  * @return string|true
  */
-function update_client($id, $data)
+function update_client($data)
 {
-    if (!client_exists($id)) return "Client not found";
-    $client = (array)find_client($id)[0];
+    $id = (int)$data["id"];
+    if(!client_exists($id)) return "Client Not Found";
+    $client = (array)find_client($id);
     $nom = $data["nom"] ?? $client["nom"];
     $prenom = $data["prenom"] ?? $client["prenom"];
     $email = $data["email"] ?? $client["email"];
@@ -114,13 +121,14 @@ function update_client($id, $data)
  */
 function client_exists($id)
 {
-    $records = find_client($id);
+    $db = $GLOBALS['db'];
+    $QUERY = "SELECT * FROM client WHERE id = '$id'";
+    $records = $db->query($QUERY)->fetchAll(PDO::FETCH_OBJ);
     if (sizeof((array)$records) > 0) {
         return true;
     } else {
         return false;
     }
-
 }
 
 
@@ -149,4 +157,33 @@ function comptes_of_client($id)
 
     }
     return array_merge($cpte_courants,$cpte_epargnes);
+}
+
+
+function login($data) : bool {
+    if(isset($data["email"])){
+        $email = $data["email"];
+    }else{
+        throw new Exception("Email is required");
+    }
+
+    if(isset($data["password"])){
+        $password = sha1($data["password"]);
+    }else{
+        throw new Exception("Password is required");
+    }
+
+    $db = $GLOBALS['db'];
+
+    $QUERY = "SELECT * FROM client WHERE  email = '$email' AND password = '$password'";
+
+    $client = $db->query($QUERY)->fetchAll(PDO::FETCH_OBJ);
+    var_dump($client); die;
+    if(!$client){
+        throw new Exception("Login failed : email or password incorrect ",400);
+    }else{
+        return true;
+    }
+
+
 }

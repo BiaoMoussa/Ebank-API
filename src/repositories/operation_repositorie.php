@@ -27,6 +27,8 @@ function create_operation($type, $data)
         $id_compte = $compte->id;
         $type_compte = $compte->id_type_compte;
         $solde = $compte->solde;
+        $statut = $compte->statut;
+        if($statut!=1) return "Account Blocked or Suspended";
     }
     if ($type != 1 && $type != 2) {
         return "Type of Operation Not Found";
@@ -54,7 +56,7 @@ function create_operation($type, $data)
     $code_operation =  uniqid("op", true); //numero unique
     try {
         $db->beginTransaction();
-        update_compte($compteModifier["numero"],$compteModifier);
+        update_compte($compteModifier);
         $QUERY = "INSERT INTO operations (id_type_operation,montant,date_operation,id_compte,code) VALUES (:id_type_operation,:montant,:date_operation,:id_compte,:code)";
         $prepareStatement = $db->prepare($QUERY);
         $prepareStatement->bindParam(":id_type_operation", $type);
@@ -203,6 +205,12 @@ function create_operation_without_transaction($type,$data){
         $id_compte = $compte->id;
         $type_compte = $compte->id_type_compte;
         $solde = $compte->solde;
+        $statut = $compte->statut;
+    }
+
+    if($statut != 'actif' ) {
+        return "Compte not activated";
+        exit();
     }
     if ($type != 1 && $type != 2) {
         return "Type of Operation Not Found";
@@ -229,7 +237,7 @@ function create_operation_without_transaction($type,$data){
     $current_date = date('Y-m-d H:i:s');
     $code_operation =  uniqid("op", true); //numero unique
     try {
-        update_compte($compteModifier["numero"],$compteModifier);
+        update_compte($compteModifier);
         $QUERY = "INSERT INTO operations (id_type_operation,montant,date_operation,id_compte,code) VALUES (:id_type_operation,:montant,:date_operation,:id_compte,:code)";
         $prepareStatement = $db->prepare($QUERY);
         $prepareStatement->bindParam(":id_type_operation", $type);

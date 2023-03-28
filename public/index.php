@@ -125,8 +125,8 @@ $app->post('/client-create', function (Request $request, Response $response, $ar
     return fetch_data($request, $response, $args, $data);
 });
 
-$app->post('/client-update-id={id}', function (Request $request, Response $response, $args) {
-    $is_updated = update_client($args["id"], $request->getParsedBody());
+$app->post('/client-update', function (Request $request, Response $response, $args) {
+    $is_updated = update_client( $request->getParsedBody());
     if (is_bool($is_updated) and $is_updated) {
         $data = array("status" => "success", "msg" => "Client Updated Successfully");
     } else {
@@ -136,6 +136,15 @@ $app->post('/client-update-id={id}', function (Request $request, Response $respo
 });
 
 
+$app->post('/login', function (Request $request, Response $response, $args) {
+    $is_logged = login($request->getParsedBody());
+    if (is_bool($is_logged) && $is_logged) {
+        $data = array("status" => "success", "data" => true);
+    } else {
+        $data = array("status" => "error", "msg" => "$is_logged");
+    }
+    return fetch_data($request, $response, $args, $data);
+});
 /**
  * FIN WEB SERVICES
  */
